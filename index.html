@@ -1,0 +1,266 @@
+how to host it on github?
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Matches</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            /* Viewport height */
+        }
+
+        #all-matches {
+            min-height: 100vh;
+            /* Ensures content fills screen */
+        }
+
+        #all-matches {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+        }
+
+        .services-container .content {
+            padding: 0px !important;
+        }
+
+        .match {
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 6px 40px rgba(0, 0, 0, 0.1);
+            transition: all 300ms ease;
+            background: #fff;
+        }
+
+        .match-thumbnail {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .match-title {
+            font-size: 16px !important;
+            margin: 5px 0;
+        }
+
+        .match-competition,
+        .match-date {
+            font-size: 14px;
+            color: #b4b1b1;
+            text-transform: uppercase;
+        }
+
+        .match-status {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .upcoming {
+            color: orange;
+            font-size: 14px !important;
+        }
+
+        .finished {
+            color: green;
+            font-size: 14px !important;
+        }
+
+        .live {
+            color: red;
+            font-size: 14px !important;
+        }
+
+        .countdown {
+            color: yellow;
+            font-size: 14px !important;
+        }
+
+        .countup {
+            color: #fa3af4;
+            font-size: 14px !important;
+        }
+
+        @media (max-width: 600px) {
+            #all-matches {
+                grid-template-columns: 1fr;
+            }
+
+            .match-title {
+                font-size: 14px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="services-container" id="all-matches">
+        <div class="service skeleton">
+            <a href="#">
+                <div class="skeleton-img"></div>
+            </a>
+            <div class="content">
+                <a href="#">
+                    <h2 class="skeleton-text"></h2>
+                </a>
+                <p class="skeleton-text"></p>
+                <div class="labels">
+                    <p class="skeleton-text"></p>
+                </div>
+                <div class="btn-flex" style="display:flex;"></div>
+            </div>
+        </div>
+        <div class="service skeleton"></div>
+        <div class="service skeleton"></div>
+    </div>
+
+    <script>
+        const apiUrl = "https://www.scorebat.com/video-api/v3/feed/?token=MTg0NDIxXzE3MzI0MDc3MTBfZmU0OWZhYWQ1NmRmYTcwMDdkYmVkNTlmZDQ2YjUyZDQ4MWM5ZjRhNQ==";
+
+        async function fetchFinishedMatches() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data && data.response) {
+                    displayMatches(data.response);
+                } else {
+                    console.error("No matches found");
+                }
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        function displayMatches(matches) {
+            const finishedMatchesDiv = document.getElementById("all-matches");
+            const matchDuration = 150 * 60 * 1000;
+            const now = new Date();
+
+            const liveMatches = [];
+            const upcomingMatches = [];
+            const finishedMatches = [];
+
+            matches.forEach(match => {
+                const matchDate = new Date(match.date);
+                const timeDiff = now - matchDate;
+
+                if (timeDiff < 0) {
+                    upcomingMatches.push(match);
+                } else if (timeDiff < matchDuration) {
+                    liveMatches.push(match);
+                } else {
+                    finishedMatches.push(match);
+                }
+            });
+
+            const sortedMatches = [...liveMatches, ...upcomingMatches, ...finishedMatches];
+            finishedMatchesDiv.innerHTML = '';
+
+            sortedMatches.forEach(match => {
+                const matchDiv = document.createElement("div");
+                matchDiv.className = "content match";
+
+                const thumbnail = document.createElement("img");
+                thumbnail.src = match.thumbnail;
+                thumbnail.alt = "Match Thumbnail";
+                thumbnail.className = "match-thumbnail";
+                thumbnail.onclick = () => window.open(match.matchviewUrl, "_blank");
+
+                const title = document.createElement("h1");
+                title.className = "match-title";
+                title.textContent = match.title;
+
+                const competition = document.createElement("div");
+                competition.className = "match-competition";
+                competition.textContent = `${match.competition}`;
+
+                const date = document.createElement("div");
+                date.className = "match-date";
+                date.textContent = formatMatchDate(new Date(match.date));
+
+                const status = document.createElement("div");
+                status.className = "match-status";
+
+                const timeDisplay = document.createElement("div");
+                const timeDiff = now - new Date(match.date);
+
+                if (timeDiff < 0) {
+                    status.textContent = "Status: Upcoming";
+                    status.classList.add("upcoming");
+                    timeDisplay.className = "countdown";
+                    countdownTimer(new Date(match.date), timeDisplay);
+                } else if (timeDiff < matchDuration) {
+                    status.textContent = "Live Stream";
+                    status.classList.add("live");
+                    timeDisplay.className = "countup";
+                    countupTimer(new Date(match.date), timeDisplay);
+                } else {
+                    status.textContent = "Match Finished";
+                    status.classList.add("finished");
+                }
+
+                matchDiv.appendChild(thumbnail);
+                matchDiv.appendChild(title);
+                matchDiv.appendChild(competition);
+                matchDiv.appendChild(date);
+                matchDiv.appendChild(status);
+                matchDiv.appendChild(timeDisplay);
+                finishedMatchesDiv.appendChild(matchDiv);
+            });
+        }
+
+        function formatMatchDate(date) {
+            const options = { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: true };
+            return date.toLocaleDateString("en-US", options);
+        }
+
+        function countdownTimer(startDate, displayElement) {
+            function updateCountdown() {
+                const now = new Date();
+                const diff = startDate - now;
+                if (diff <= 0) {
+                    displayElement.textContent = "Starting soon...";
+                    clearInterval(interval);
+                    return;
+                }
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                displayElement.textContent = `Starts in: ${hours}h ${minutes}m ${seconds}s`;
+            }
+            updateCountdown();
+            const interval = setInterval(updateCountdown, 1000);
+        }
+
+        function countupTimer(startDate, displayElement) {
+            function updateCountup() {
+                const now = new Date();
+                const diff = now - startDate;
+                if (diff >= 150 * 60 * 1000) {
+                    displayElement.textContent = "Match has ended.";
+                    clearInterval(interval);
+                    return;
+                }
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                displayElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+            }
+            updateCountup();
+            const interval = setInterval(updateCountup, 1000);
+        }
+
+        fetchFinishedMatches();
+    </script>
+</body>
+
+</html>
